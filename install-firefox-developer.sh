@@ -18,38 +18,40 @@ get_installed_version() {
     fi
 }
 
-# Function to get the latest available version
-get_latest_version() {
-    curl -sI "$LATEST_URL" | grep -i Location | awk -F'-' '{print $5}' | sed 's/\.tar\.bz2//'
+# Function to get the version from the freshly downloaded tarball
+get_downloaded_version() {
+    tar -xf "$TARBALL"
+    ./firefox/firefox --version | awk '{print $3}'
+    rm -rf firefox
 }
 
 # Check if Firefox Developer is already installed and up-to-date
 installed_version=$(get_installed_version)
-latest_version=$(get_latest_version)
+
+# Download the latest version
+curl -L -o "$TARBALL" "$LATEST_URL"
+downloaded_version=$(get_downloaded_version)
 
 echo "Installed version: $installed_version"
-echo "Latest version: $latest_version"
+echo "Downloaded version: $downloaded_version"
 
-# Uninstall if installed version is different from the latest
-if [ "$installed_version" != "$latest_version" ]; then
+# Uninstall if installed version is different from the latest downloaded version
+if [ "$installed_version" != "$downloaded_version" ]; then
     echo "Updating to the latest version..."
 
     # Remove old binaries
     sudo rm -rf "$FIREFOX_DIR" "$FIREFOX_BIN"
 
-    # DOWNLOAD
-    curl -L -o "$TARBALL" "$LATEST_URL"
-
-    # EXTRACT
+    # Extract the new version
     tar -xf "$TARBALL"
     rm -rf "$TARBALL"
     mv firefox firefox-developer
 
-    # INSTALL
+    # Install
     sudo mv firefox-developer /opt
     sudo ln -s /opt/firefox-developer/firefox /usr/bin/firefox-developer
 
-    echo "Update complete to version $latest_version"
+    echo "Update complete to version $downloaded_version"
 else
     echo "Firefox Developer is already up to date."
 fi
